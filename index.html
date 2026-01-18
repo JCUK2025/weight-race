@@ -1,54 +1,934 @@
-<div class="user-nav" id="user-tabs"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Holiday Weight Race</title>
 
-<div id="page-data" class="page">
-  <div class="card">
-    <div class="stat-grid">
-      <div class="stat-box"><span class="stat-label">Current BMI</span><div class="stat-val" id="val-bmi">--</div></div>
-      <div class="stat-box"><span class="stat-label">Left to Lose</span><div class="stat-val" id="val-left">Set Target</div></div>
-      <div class="stat-box weekly-target" style="grid-column:span 2"><span class="stat-label">Weekly Goal to hit Target</span><div class="stat-val" id="val-weekly">--</div></div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root{--active-color:#6c5ce7;--bg:#f0f2f5;--accent:#00cec9}
+    body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);margin:0;padding:12px;display:flex;flex-direction:column;align-items:center}
+    .timer-strip{background:linear-gradient(135deg,#00cec9,#0984e3);color:#fff;width:100%;max-width:720px;padding:14px;border-radius:0 0 14px 14px;box-sizing:border-box;text-align:center;margin-bottom:12px}
+    .timer-grid{display:flex;justify-content:center;gap:12px;margin-top:6px}
+    .timer-unit{display:flex;flex-direction:column}
+    .timer-num{font-weight:900;font-size:20px}
+    .timer-label{font-size:10px;opacity:.9;text-transform:uppercase}
+
+    .container{width:100%;max-width:720px}
+    .app-header{display:flex;align-items:center;gap:12px;margin:12px 0}
+    .app-logo{width:44px;height:44px;object-fit:contain;border-radius:8px}
+    h1{margin:0;font-size:18px}
+
+    .user-nav{display:flex;gap:8px;overflow:auto;padding:8px 0;margin-bottom:12px}
+    .user-btn{min-width:90px;padding:10px;border-radius:12px;border:none;color:#fff;font-weight:800;cursor:pointer;opacity:.6}
+    .user-btn.active{opacity:1;transform:scale(1.03);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+    .add-btn{min-width:44px;height:44px;border-radius:50%;background:#2d3436;color:#fff;border:none;font-size:18px;cursor:pointer}
+
+    .card{background:#fff;padding:16px;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.04);margin-bottom:12px}
+    .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+    .stat-box{background:#f8f9fa;padding:10px;border-radius:10px;text-align:center}
+    .stat-label{font-size:10px;font-weight:800;color:#666;display:block;margin-bottom:6px}
+    .stat-val{font-weight:900;font-size:16px;color:#2d3436}
+
+    input, textarea, button{font-family:inherit}
+    input, textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #e6e6e6;box-sizing:border-box}
+    .main-btn{width:100%;padding:12px;border-radius:10px;border:none;background:var(--active-color);color:#fff;font-weight:900;cursor:pointer}
+    .secondary-btn{width:100%;padding:10px;border-radius:10px;border:none;background:#ffeaa7;color:#d63031;font-weight:800;cursor:pointer}
+
+    .hidden{display:none!important}
+
+    /* Trophy / cabinet styles */
+    .trophy-cabinet{margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap}
+    .trophy-user{flex:1 1 200px;min-width:160px;background:#fff;padding:10px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.04)}
+    .trophy-user h4{margin:0 0 6px 0}
+    .trophy-list{display:flex;gap:8px;flex-wrap:wrap}
+    .trophy{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.08)}
+    .trophy.winner{background:linear-gradient(135deg,#ffd166,#f97316)}
+    .trophy.streak{background:linear-gradient(135deg,#a78bfa,#6c5ce7)}
+    .trophy.single{background:linear-gradient(135deg,#60a5fa,#0077b6)}
+
+    .trophy-pop{animation:pop 700ms cubic-bezier(.2,.8,.2,1)}
+    @keyframes pop{0%{transform:scale(.2) rotate(-10deg);opacity:0;filter:blur(6px)}50%{transform:scale(1.18) rotate(4deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+    .trophy-glow{box-shadow:0 8px 28px rgba(255,205,64,.28),0 2px 8px rgba(0,0,0,.06);transition:box-shadow 400ms}
+    .leaderboard-animate{animation:pulseBar 900ms ease}
+    @keyframes pulseBar{0%{transform:scaleX(1);filter:brightness(1)}50%{transform:scaleX(1.02);filter:brightness(1.08)}100%{transform:scaleX(1);filter:brightness(1)}}
+
+    /* Prize editor/modal */
+    .prize-textarea{min-height:64px;padding:8px;border-radius:8px;border:1px solid #eee}
+    .winner-modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:200}
+    .winner-modal-card{background:#fff;border-radius:12px;padding:18px;max-width:440px;width:92%;box-shadow:0 12px 40px rgba(0,0,0,.18);text-align:center}
+    .winner-modal-card h2{Margin:0 0 8px 0}
+    .winner-modal-card .modal-prize{font-weight:800;margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="timer-strip" id="countdown-timer">
+    <span>TIME UNTIL FLIGHT ✈️</span>
+    <div class="timer-grid">
+      <div class="timer-unit"><div class="timer-num" id="days">--</div><div class="timer-label">Days</div></div>
+      <div class="timer-unit"><div class="timer-num" id="hours">--</div><div class="timer-label">Hrs</div></div>
+      <div class="timer-unit"><div class="timer-num" id="mins">--</div><div class="timer-label">Min</div></div>
+      <div class="timer-unit"><div class="timer-num" id="secs">--</div><div class="timer-label">Sec</div></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="app-header">
+      <!-- Replace with your SVG/icon file if preferred -->
+      <img class="app-logo" id="logo" src="data:image/svg+xml;utf8,<?xml version='1.0'?><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%236c5ce7'/><text x='12' y='16' font-size='10' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>WR</text></svg>" alt="logo">
+      <h1>Holiday Weight Race</h1>
     </div>
 
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="main-btn" id="unit-kg" onclick="changeUnit('kg')" style="flex:1;background:#fff;color:#333;border:1px solid #ddd">KG</button>
-      <button class="main-btn" id="unit-st" onclick="changeUnit('st')" style="flex:1;background:#fff;color:#333;border:1px solid #ddd">ST/LB</button>
+    <div class="user-nav" id="user-tabs"></div>
+
+    <div id="page-data" class="page">
+      <div class="card">
+        <div class="stat-grid">
+          <div class="stat-box"><span class="stat-label">Current BMI</span><div class="stat-val" id="val-bmi">--</div></div>
+          <div class="stat-box"><span class="stat-label">Left to Lose</span><div class="stat-val" id="val-left">Set Target</div></div>
+          <div class="stat-box weekly-target" style="grid-column:span 2"><span class="stat-label">Weekly Goal to hit Target</span><div class="stat-val" id="val-weekly">--</div></div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button class="main-btn" id="unit-kg" onclick="changeUnit('kg')" style="flex:1;background:#fff;color:#333;border:1px solid #ddd">KG</button>
+          <button class="main-btn" id="unit-st" onclick="changeUnit('st')" style="flex:1;background:#fff;color:#333;border:1px solid #ddd">ST/LB</button>
+        </div>
+
+        <label style="font-size:12px;font-weight:800">NAME & THEME</label>
+        <input id="in_name" placeholder="User name">
+        <input id="in_color" type="color" style="height:44px;padding:6px;margin-top:8px">
+
+        <label style="font-size:12px;font-weight:800">HEIGHT</label>
+        <div id="h-metric"><input id="h_cm" type="number" placeholder="Height (cm)"></div>
+        <div id="h-imp" class="hidden" style="display:flex;gap:8px"><input id="h_ft" type="number" placeholder="ft"><input id="h_in" type="number" placeholder="in"></div>
+
+        <button class="main-btn" onclick="updateUserProfile()">Save Profile Settings</button>
+      </div>
+
+      <div class="card">
+        <h3>⚖️ Log Current Weight</h3>
+        <div id="w-metric"><input id="w_kg" type="number" step="0.1" placeholder="Current weight (kg)"></div>
+        <div id="w-imp" class="hidden" style="display:flex;gap:8px"><input id="w_st" type="number" placeholder="st"><input id="w_lb" type="number" placeholder="lb"></div>
+        <button class="main-btn" onclick="addWeightEntry()">Submit Weight</button>
+      </div>
+
+      <div class="card">
+        <h3>🎯 Set Holiday Target</h3>
+        <div id="t-metric"><input id="t_kg" type="number" step="0.1" placeholder="Target weight (kg)"></div>
+        <div id="t-imp" class="hidden" style="display:flex;gap:8px"><input id="t_st" type="number" placeholder="st"><input id="t_lb" type="number" placeholder="lb"></div>
+        <input id="t_date" type="date" style="margin-top:8px">
+        <button class="main-btn" onclick="updateUserGoal()">Save Goal</button>
+      </div>
+
+      <button class="secondary-btn" onclick="deleteCurrentUser()">RESET ALL MY DATA</button>
     </div>
 
-    <label style="font-size:12px;font-weight:800">NAME & THEME</label>
-    <input id="in_name" placeholder="User name">
-    <input id="in_color" type="color" style="height:44px;padding:6px;margin-top:8px">
+    <div id="page-race" class="page hidden">
+      <div class="card" style="text-align:center;border:2px solid var(--accent)">
+        <div style="font-size:11px;font-weight:800;color:#666">GROUP TOTAL LOST</div>
+        <div style="font-size:26px;font-weight:900;color:var(--accent)" id="group-total-val">0.0kg</div>
+      </div>
 
-    <label style="font-size:12px;font-weight:800">HEIGHT</label>
-    <div id="h-metric"><input id="h_cm" type="number" placeholder="Height (cm)"></div>
-    <div id="h-imp" class="hidden" style="display:flex;gap:8px"><input id="h_ft" type="number" placeholder="ft"><input id="h_in" type="number" placeholder="in"></div>
+      <div id="race-container"></div>
+    </div>
 
-    <button class="main-btn" onclick="updateUserProfile()">Save Profile Settings</button>
+    <div style="height:84px"></div>
   </div>
 
-  <div class="card">
-    <h3>⚖️ Log Current Weight</h3>
-    <div id="w-metric"><input id="w_kg" type="number" step="0.1" placeholder="Current weight (kg)"></div>
-    <div id="w-imp" class="hidden" style="display:flex;gap:8px"><input id="w_st" type="number" placeholder="st"><input id="w_lb" type="number" placeholder="lb"></div>
-    <button class="main-btn" onclick="addWeightEntry()">Submit Weight</button>
+  <div class="navbar" style="position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;padding:12px;background:#fff;box-shadow:0 -8px 24px rgba(0,0,0,.06);border-radius:12px 12px 0 0;max-width:720px;margin:0 auto">
+    <button class="nav-btn active" id="btn-data" onclick="showPage('data')" style="background:none;border:none;font-weight:900;color:var(--active-color)">Profile</button>
+    <button class="nav-btn" id="btn-race" onclick="showPage('race')" style="background:none;border:none;font-weight:900;color:#999">Race</button>
   </div>
 
-  <div class="card">
-    <h3>🎯 Set Holiday Target</h3>
-    <div id="t-metric"><input id="t_kg" type="number" step="0.1" placeholder="Target weight (kg)"></div>
-    <div id="t-imp" class="hidden" style="display:flex;gap:8px"><input id="t_st" type="number" placeholder="st"><input id="t_lb" type="number" placeholder="lb"></div>
-    <input id="t_date" type="date" style="margin-top:8px">
-    <button class="main-btn" onclick="updateUserGoal()">Save Goal</button>
-  </div>
+  <script>
+    // ---------- Data & storage ----------
+    let users = JSON.parse(localStorage.getItem('holiday_v14')) || [
+      { id: 1, name: "Lisa", color: "#e84393", logs: [], h: 0, target: 0, tDate: "" },
+      { id: 2, name: "John", color: "#2d3436", logs: [], h: 0, target: 0, tDate: "" }
+    ];
+    // Ensure trophies exists
+    users = users.map(u => ({ ...u, trophies: Array.isArray(u.trophies) ? u.trophies : [] }));
+    let currentId = users.length ? users[0].id : null;
+    let unit = localStorage.getItem('race_unit') || 'kg';
 
-  <button class="secondary-btn" onclick="deleteCurrentUser()">RESET ALL MY DATA</button>
-</div>
+    function saveAll() {
+      localStorage.setItem('holiday_v14', JSON.stringify(users));
+      localStorage.setItem('race_unit', unit);
+    }
 
-<div id="page-race" class="page hidden">
-  <div class="card" style="text-align:center;border:2px solid var(--accent)">
-    <div style="font-size:11px;font-weight:800;color:#666">GROUP TOTAL LOST</div>
-    <div style="font-size:26px;font-weight:900;color:var(--accent)" id="group-total-val">0.0kg</div>
-  </div>
+    // ---------- Helpers for unit conversions & display ----------
+    function kgToLbs(kg) { return kg * 2.20462; }
+    function kgToSt(kg) { return kg / 6.35029318; } // decimal stones
+    function formatKgAsSt(kg) {
+      const lbs = kgToLbs(kg);
+      const st = Math.floor(lbs / 14);
+      const remLbs = (lbs % 14);
+      return `${st}st ${remLbs.toFixed(1)}lb`;
+    }
+    function displayWeightLabel(kgVal) {
+      if (!isFinite(kgVal)) return '--';
+      if (unit === 'st') return formatKgAsSt(kgVal);
+      return `${kgVal.toFixed(1)}kg`;
+    }
 
-  <div id="race-container"></div>
-</div>
+    // ---------- Profile functions ----------
+    function switchUser(id) {
+      const candidate = users.find(x => x.id === id);
+      if (!candidate) {
+        if (users.length) currentId = users[0].id;
+        else currentId = null;
+        render();
+        startCountdown();
+        return;
+      }
+      currentId = candidate.id;
+      const u = candidate;
 
-<div style="height:84px"></div>
+      const inName = document.getElementById('in_name');
+      const inColor = document.getElementById('in_color');
+      if (inName) inName.value = u.name || "";
+      if (inColor) inColor.value = u.color || "#6c5ce7";
+      document.documentElement.style.setProperty('--active-color', u.color || "#6c5ce7");
+
+      if (unit === 'kg') {
+        const hCm = document.getElementById('h_cm'); if (hCm) hCm.value = u.h ? u.h : "";
+        const hFt = document.getElementById('h_ft'); if (hFt) hFt.value = "";
+        const hIn = document.getElementById('h_in'); if (hIn) hIn.value = "";
+      } else {
+        if (u.h && u.h > 0) {
+          const ft = Math.floor(u.h / 30.48);
+          const inch = Math.round((u.h - (ft * 30.48)) / 2.54);
+          const hFt = document.getElementById('h_ft'); if (hFt) hFt.value = ft;
+          const hIn = document.getElementById('h_in'); if (hIn) hIn.value = inch;
+        } else {
+          const hFt = document.getElementById('h_ft'); if (hFt) hFt.value = "";
+          const hIn = document.getElementById('h_in'); if (hIn) hIn.value = "";
+        }
+        const hCm = document.getElementById('h_cm'); if (hCm) hCm.value = "";
+      }
+
+      // Target
+      if (u.target && u.target > 0) {
+        if (unit === 'kg') {
+          const tKg = document.getElementById('t_kg'); if (tKg) tKg.value = Number(u.target).toFixed(1);
+          const tSt = document.getElementById('t_st'); if (tSt) tSt.value = "";
+          const tLb = document.getElementById('t_lb'); if (tLb) tLb.value = "";
+        } else {
+          const lbs = kgToLbs(u.target);
+          const tSt = document.getElementById('t_st'); if (tSt) tSt.value = Math.floor(lbs / 14);
+          const tLb = document.getElementById('t_lb'); if (tLb) tLb.value = +(lbs % 14).toFixed(1);
+          const tKg = document.getElementById('t_kg'); if (tKg) tKg.value = "";
+        }
+      } else {
+        const tKg = document.getElementById('t_kg'); if (tKg) tKg.value = "";
+        const tSt = document.getElementById('t_st'); if (tSt) tSt.value = "";
+        const tLb = document.getElementById('t_lb'); if (tLb) tLb.value = "";
+      }
+
+      const tDate = document.getElementById('t_date'); if (tDate) tDate.value = u.tDate || "";
+
+      // clear weight inputs
+      const wKg = document.getElementById('w_kg'); if (wKg) wKg.value = "";
+      const wSt = document.getElementById('w_st'); if (wSt) wSt.value = "";
+      const wLb = document.getElementById('w_lb'); if (wLb) wLb.value = "";
+
+      render();
+      startCountdown();
+    }
+
+    function updateUserProfile() {
+      const u = users.find(x => x.id === currentId);
+      if (!u) return;
+      const inName = document.getElementById('in_name'); if (inName) u.name = inName.value || u.name;
+      const inColor = document.getElementById('in_color'); if (inColor) u.color = inColor.value || u.color;
+
+      if (unit === 'kg') {
+        const parsed = parseFloat(document.getElementById('h_cm').value);
+        u.h = isFinite(parsed) ? parsed : (u.h || 0);
+      } else {
+        const ft = parseFloat(document.getElementById('h_ft').value) || 0;
+        const inch = parseFloat(document.getElementById('h_in').value) || 0;
+        const calc = (ft * 30.48) + (inch * 2.54);
+        u.h = isFinite(calc) ? calc : (u.h || 0);
+      }
+      saveAll();
+      render();
+    }
+
+    function updateUserGoal() {
+      const u = users.find(x => x.id === currentId);
+      if (!u) return;
+      if (unit === 'kg') {
+        const parsed = parseFloat(document.getElementById('t_kg').value);
+        u.target = isFinite(parsed) ? parsed : 0;
+      } else {
+        const st = parseFloat(document.getElementById('t_st').value) || 0;
+        const lb = parseFloat(document.getElementById('t_lb').value) || 0;
+        const lbs = (st * 14) + lb;
+        const kg = isFinite(lbs) ? (lbs / 2.20462) : 0;
+        u.target = kg || 0;
+      }
+      const tDate = document.getElementById('t_date'); u.tDate = (tDate && tDate.value) ? tDate.value : "";
+      saveAll();
+      render();
+      startCountdown();
+    }
+
+    function addWeightEntry() {
+      const u = users.find(x => x.id === currentId);
+      if (!u) return;
+      let kg = NaN;
+      if (unit === 'kg') {
+        kg = parseFloat(document.getElementById('w_kg').value);
+      } else {
+        const st = parseFloat(document.getElementById('w_st').value) || 0;
+        const lb = parseFloat(document.getElementById('w_lb').value) || 0;
+        const lbs = (st * 14) + lb;
+        kg = lbs / 2.20462;
+      }
+      if (!isFinite(kg) || kg <= 0) return;
+      u.logs.push({ kg: +kg.toFixed(1), d: new Date().toLocaleDateString('en-GB') });
+      saveAll();
+      render();
+      // clear inputs
+      const wKg = document.getElementById('w_kg'); if (wKg) wKg.value = "";
+      const wSt = document.getElementById('w_st'); if (wSt) wSt.value = "";
+      const wLb = document.getElementById('w_lb'); if (wLb) wLb.value = "";
+    }
+
+    // ---------- Progress & stats ----------
+    function getProg(u) {
+      if (!u || !u.logs || u.logs.length === 0 || !u.target || u.target === 0) return 0;
+      const startWeight = u.logs[0].kg;
+      const currentWeight = u.logs[u.logs.length - 1].kg;
+      const totalToLose = startWeight - u.target;
+      if (totalToLose <= 0) return currentWeight <= u.target ? 100 : 0;
+      let p = ((startWeight - currentWeight) / totalToLose) * 100;
+      return Math.min(100, Math.max(0, p));
+    }
+
+    // ---------- Countdown ----------
+    let countdownInterval = null;
+    const daysEl = document.getElementById('days');
+    const hoursEl = document.getElementById('hours');
+    const minsEl = document.getElementById('mins');
+    const secsEl = document.getElementById('secs');
+    const countdownLabelEl = document.querySelector('#countdown-timer span');
+
+    function stopCountdown() { if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; } }
+    function setCountdownEmpty(message) {
+      if (daysEl) daysEl.innerText = '--';
+      if (hoursEl) hoursEl.innerText = '--';
+      if (minsEl) minsEl.innerText = '--';
+      if (secsEl) secsEl.innerText = '--';
+      if (countdownLabelEl) countdownLabelEl.innerText = message || 'TIME UNTIL FLIGHT ✈️';
+    }
+
+    function startCountdown() {
+      stopCountdown();
+      if (!currentId) { setCountdownEmpty('No user selected'); return; }
+      const u = users.find(x => x.id === currentId);
+      if (!u || !u.tDate) { setCountdownEmpty('Set holiday date'); return; }
+
+      const target = new Date(u.tDate + 'T23:59:59');
+      if (!isFinite(target.getTime())) { setCountdownEmpty('Invalid date'); return; }
+
+      function update() {
+        const now = new Date();
+        let diff = target - now;
+
+        if (diff <= 0) {
+          if (daysEl) daysEl.innerText = '00';
+          if (hoursEl) hoursEl.innerText = '00';
+          if (minsEl) minsEl.innerText = '00';
+          if (secsEl) secsEl.innerText = '00';
+          if (countdownLabelEl) countdownLabelEl.innerText = 'HOLIDAY PASSED';
+          if (typeof declareRaceWinner === 'function') {
+            try { declareRaceWinner(); } catch (e) { console.error(e); }
+          }
+          stopCountdown();
+          return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        diff -= days * (1000 * 60 * 60 * 24);
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        diff -= hours * (1000 * 60 * 60);
+        const minutes = Math.floor(diff / (1000 * 60));
+        diff -= minutes * (1000 * 60);
+        const seconds = Math.floor(diff / 1000);
+
+        if (daysEl) daysEl.innerText = String(days).padStart(2, '0');
+        if (hoursEl) hoursEl.innerText = String(hours).padStart(2, '0');
+        if (minsEl) minsEl.innerText = String(minutes).padStart(2, '0');
+        if (secsEl) secsEl.innerText = String(seconds).padStart(2, '0');
+        if (countdownLabelEl) countdownLabelEl.innerText = 'TIME UNTIL FLIGHT ✈️';
+      }
+
+      update();
+      countdownInterval = setInterval(update, 1000);
+    }
+
+    // ---------- Race, trophies & charts ----------
+    const raceCharts = {};
+
+    function percentOfTarget(u) { return getProg(u); }
+    function totalKgLost(u) {
+      if (!u || !u.logs || u.logs.length < 1) return 0;
+      const start = u.logs[0].kg || 0;
+      const last = u.logs[u.logs.length - 1].kg || 0;
+      return +(start - last).toFixed(1);
+    }
+    function longestLosingStreak(u) {
+      if (!u || !u.logs || u.logs.length < 2) return 0;
+      let max = 0, cur = 0;
+      for (let i = 1; i < u.logs.length; i++) {
+        if (u.logs[i].kg < u.logs[i - 1].kg) { cur++; max = Math.max(max, cur); } else { cur = 0; }
+      }
+      return max;
+    }
+    function maxSingleWeighInLoss(u) {
+      if (!u || !u.logs || u.logs.length < 2) return 0;
+      let maxLoss = 0;
+      for (let i = 1; i < u.logs.length; i++) {
+        const loss = (u.logs[i - 1].kg - u.logs[i].kg);
+        if (loss > maxLoss) maxLoss = loss;
+      }
+      return +maxLoss.toFixed(1);
+    }
+
+    function computeRaceResults() {
+      const results = users.map(u => ({
+        id: u.id, name: u.name, color: u.color,
+        percent: percentOfTarget(u),
+        kgLost: totalKgLost(u),
+        streak: longestLosingStreak(u),
+        maxSingle: maxSingleWeighInLoss(u),
+        logs: u.logs || []
+      }));
+
+      const sortedByPercent = [...results].sort((a, b) => {
+        if (b.percent !== a.percent) return b.percent - a.percent;
+        return b.kgLost - a.kgLost;
+      });
+
+      const winner = sortedByPercent[0] || null;
+      const sortedByStreak = [...results].sort((a, b) => b.streak - a.streak);
+      const streakHolder = sortedByStreak[0] || null;
+      const sortedBySingle = [...results].sort((a, b) => b.maxSingle - a.maxSingle);
+      const singleHolder = sortedBySingle[0] || null;
+
+      return { results, winner, streakHolder, singleHolder, leaderboard: sortedByPercent };
+    }
+
+    function hexToRgba(hex, alpha = 1) {
+      try {
+        const h = hex.replace('#', '');
+        const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r},${g},${b},${alpha})`;
+      } catch (e) {
+        return `rgba(9,132,227,${alpha})`;
+      }
+    }
+
+    function renderRaceTab() {
+      const container = document.getElementById('race-container');
+      if (!container) return;
+
+      const { results, winner, streakHolder, singleHolder, leaderboard } = computeRaceResults();
+
+      // destroy charts
+      Object.values(raceCharts).forEach(ch => { try { ch.destroy(); } catch (e) {} });
+      for (const k in raceCharts) delete raceCharts[k];
+
+      // Trophy header
+      const trophyHtml = `
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:800">Winner (Top % of target)</div>
+              <div style="font-weight:900;color:${winner?winner.color:'#333'};margin-top:6px">${winner ? (winner.name + ' — ' + winner.percent.toFixed(1) + '%') : 'No winner yet'}</div>
+            </div>
+            <div style="width:1px;background:#eee;height:60px"></div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:800">Longest Losing Streak</div>
+              <div style="font-weight:900;color:${streakHolder?streakHolder.color:'#333'};margin-top:6px">${streakHolder ? (streakHolder.name + ' — ' + streakHolder.streak + '⬇️') : '—'}</div>
+            </div>
+            <div style="width:1px;background:#eee;height:60px"></div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:800">Biggest Single Loss</div>
+              <div style="font-weight:900;color:${singleHolder?singleHolder.color:'#333'};margin-top:6px">${singleHolder ? (singleHolder.name + ' — ' + singleHolder.maxSingle + 'kg') : '—'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const leaderboardHtml = leaderboard.map(u => {
+        const pct = Math.max(0, Math.min(100, u.percent));
+        return `
+          <div class="card" data-user-id="${u.id}" style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:6px">
+              <div>${u.name}</div>
+              <div>${pct.toFixed(1)}%</div>
+            </div>
+            <div style="background:#eee;height:12px;border-radius:10px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${u.color};transition:0.6s"></div>
+            </div>
+            <div style="font-size:12px;color:#666;margin-top:6px">
+              ${u.kgLost.toFixed(1)}kg lost • ${u.logs.length} weigh-ins
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const chartsHtml = results.map((u) => {
+        const canvasId = `race-chart-${u.id}`;
+        return `
+          <div class="card" style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="font-weight:800">${u.name}</div>
+              <div style="font-size:12px;color:#666">Start: ${u.logs[0] ? u.logs[0].kg.toFixed(1)+'kg' : '—'} • Current: ${u.logs.length ? u.logs[u.logs.length-1].kg.toFixed(1)+'kg' : '—'}</div>
+            </div>
+            <canvas id="${canvasId}" height="100"></canvas>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = trophyHtml + leaderboardHtml + chartsHtml;
+
+      // create charts (with stones conversion if unit === 'st')
+      results.forEach(u => {
+        const canvas = document.getElementById(`race-chart-${u.id}`);
+        if (!canvas) return;
+        const labels = (u.logs || []).map(l => l.d || '');
+        const kgData = (u.logs || []).map(l => l.kg);
+        const ctx = canvas.getContext('2d');
+        const color = u.color || '#0984e3';
+
+        const dataset = (unit === 'st') ? kgData.map(k => +(kgToSt(k)).toFixed(2)) : kgData.map(k => +k.toFixed(1));
+
+        const chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: unit === 'st' ? 'Weight (st)' : 'Weight (kg)',
+              data: dataset,
+              borderColor: color,
+              backgroundColor: hexToRgba(color, 0.12),
+              fill: true,
+              tension: 0.25,
+              pointRadius: 3,
+              pointBackgroundColor: color,
+            }]
+          },
+          options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: false,
+                ticks: {
+                  callback: function(value) {
+                    if (unit === 'st') return value.toFixed(1) + 'st';
+                    return value + 'kg';
+                  },
+                  precision: 0
+                }
+              },
+              x: { ticks: { maxRotation: 0, autoSkip: true } }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                  label: function(context) {
+                    const idx = context.dataIndex;
+                    const kgVal = (u.logs && u.logs[idx]) ? u.logs[idx].kg : (unit === 'st' ? context.parsed.y * 6.35029318 : context.parsed.y);
+                    return displayWeightLabel(kgVal);
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        raceCharts[u.id] = chart;
+      });
+
+      // trophy cabinet injection
+      renderTrophyCabinet();
+      // prize editor (ensure present)
+      renderPrizeEditor();
+    }
+
+    // ---------- Trophies & cabinet ----------
+    function awardTrophies({ winner, streakHolder, singleHolder }) {
+      if (!users || users.length === 0) return;
+      const raceId = (() => {
+        const d = users.find(x => x.tDate && x.tDate.length);
+        return d ? d.tDate : (new Date()).toISOString().slice(0,10);
+      })();
+
+      function addTrophyToUser(userId, key, label, cls) {
+        const u = users.find(x => x.id === userId);
+        if (!u) return false;
+        u.trophies = u.trophies || [];
+        const exists = u.trophies.some(t => t.key === key && t.raceId === raceId);
+        if (exists) return false;
+        const trophy = { key, label, date: (new Date()).toISOString(), raceId, cls };
+        u.trophies.push(trophy);
+        saveAll();
+        return trophy;
+      }
+
+      const awarded = [];
+      if (winner && winner.id) {
+        const t = addTrophyToUser(winner.id, 'winner', `Winner — ${winner.percent.toFixed(1)}%`, 'winner');
+        if (t) awarded.push({ userId: winner.id, trophy: t });
+      }
+      if (streakHolder && streakHolder.id && streakHolder.streak > 0) {
+        const t = addTrophyToUser(streakHolder.id, 'streak', `Losing Streak — ${streakHolder.streak}`, 'streak');
+        if (t) awarded.push({ userId: streakHolder.id, trophy: t });
+      }
+      if (singleHolder && singleHolder.id && singleHolder.maxSingle > 0) {
+        const t = addTrophyToUser(singleHolder.id, 'single', `Biggest Loss — ${singleHolder.maxSingle}kg`, 'single');
+        if (t) awarded.push({ userId: singleHolder.id, trophy: t });
+      }
+
+      awarded.forEach(item => {
+        renderTrophyCabinet();
+        setTimeout(() => animateTrophyAward(item.userId, item.trophy.key), 250);
+      });
+
+      if (winner && winner.id) {
+        pulseLeaderboardForUser(winner.id);
+        try { confetti({ particleCount: 120, spread: 60, origin: { y: 0.3 } }); } catch (e) {}
+      }
+    }
+
+    function renderTrophyCabinet() {
+      const container = document.getElementById('race-container');
+      if (!container) return;
+      const cabinetHtml = users.map(u => {
+        const tHtml = (u.trophies || []).map(t => `
+          <div class="trophy ${t.cls || 'other'}" data-user="${u.id}" data-key="${t.key}" title="${t.label}">${t.key === 'winner' ? '🏆' : (t.key === 'streak' ? '🔥' : '⚡')}</div>
+        `).join('') || '<div style="color:#999;font-size:12px">No trophies yet</div>';
+
+        return `
+          <div class="trophy-user">
+            <h4 style="color:${u.color}">${u.name}</h4>
+            <div class="trophy-list">${tHtml}</div>
+          </div>
+        `;
+      }).join('');
+
+      const header = `
+        <div class="trophy-cabinet card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-weight:900">Trophy Cabinet</div>
+            <div style="font-size:12px;color:#666">Your awards are saved here</div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">${cabinetHtml}</div>
+        </div>
+      `;
+
+      const existingCabinet = container.querySelector('.trophy-cabinet');
+      if (existingCabinet) existingCabinet.remove();
+      container.insertAdjacentHTML('afterbegin', header);
+
+      container.querySelectorAll('.trophy').forEach(el => {
+        el.onclick = () => {
+          const userId = Number(el.dataset.user) || el.dataset.user;
+          animateTrophyDom(el);
+          pulseLeaderboardForUser(userId);
+        };
+      });
+    }
+
+    function animateTrophyDom(domEl) {
+      if (!domEl) return;
+      domEl.classList.add('trophy-pop', 'trophy-glow');
+      setTimeout(() => domEl.classList.remove('trophy-pop'), 900);
+      setTimeout(() => domEl.classList.remove('trophy-glow'), 1600);
+      try { confetti({ particleCount: 40, spread: 40, origin: { y: 0.5 } }); } catch (e) {}
+    }
+
+    function animateTrophyAward(userId, trophyKey) {
+      const container = document.getElementById('race-container');
+      if (!container) return;
+      const el = container.querySelector(`.trophy[data-user="${userId}"][data-key="${trophyKey}"]`);
+      if (el) animateTrophyDom(el);
+    }
+
+    function pulseLeaderboardForUser(userId) {
+      const container = document.getElementById('race-container');
+      if (!container) return;
+      const card = Array.from(container.querySelectorAll('.card')).find(c => {
+        return c.dataset && c.dataset.userId && String(c.dataset.userId) === String(userId);
+      }) || Array.from(container.querySelectorAll('.card')).find(c => {
+        return c.innerText && String(c.innerText).indexOf((users.find(u => u.id === userId) || {}).name) !== -1;
+      });
+      if (!card) return;
+      card.classList.remove('leaderboard-animate');
+      void card.offsetWidth;
+      card.classList.add('leaderboard-animate');
+      setTimeout(() => card.classList.remove('leaderboard-animate'), 1100);
+    }
+
+    // ---------- Prize editor & winner modal ----------
+    let prizeStore = JSON.parse(localStorage.getItem('holiday_v14_prizes') || '{}');
+
+    function getRaceId() {
+      const d = users.find(x => x.tDate && x.tDate.length);
+      return d ? d.tDate : (new Date()).toISOString().slice(0,10);
+    }
+
+    function getPrize() {
+      const id = getRaceId();
+      return prizeStore[id] || '';
+    }
+
+    function savePrize(text) {
+      const id = getRaceId();
+      if (!id) return;
+      prizeStore[id] = text || '';
+      localStorage.setItem('holiday_v14_prizes', JSON.stringify(prizeStore));
+      try { renderPrizeEditor(); } catch (e) {}
+    }
+
+    function renderPrizeEditor() {
+      const container = document.getElementById('race-container');
+      if (!container) return;
+      const existing = document.getElementById('prize-card');
+      if (existing) existing.remove();
+
+      const card = document.createElement('div');
+      card.id = 'prize-card';
+      card.className = 'card';
+      card.style.marginBottom = '12px';
+
+      const header = document.createElement('div');
+      header.style.display = 'flex';
+      header.style.justifyContent = 'space-between';
+      header.style.alignItems = 'center';
+      header.innerHTML = '<div style="font-weight:900">Prize / Forfeit</div><div style="font-size:12px;color:#666">Editable for this race</div>';
+      card.appendChild(header);
+
+      const textarea = document.createElement('textarea');
+      textarea.id = 'prize-text';
+      textarea.className = 'prize-textarea';
+      textarea.placeholder = 'e.g., Loser buys first drinks on holiday';
+      textarea.value = getPrize();
+      textarea.style.marginTop = '8px';
+      card.appendChild(textarea);
+
+      const actions = document.createElement('div');
+      actions.style.display = 'flex';
+      actions.style.gap = '8px';
+      actions.style.marginTop = '8px';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'main-btn';
+      saveBtn.textContent = 'Save Prize';
+      saveBtn.style.flex = '1';
+      saveBtn.onclick = () => {
+        savePrize(textarea.value.trim());
+        saveBtn.textContent = 'Saved';
+        setTimeout(()=> saveBtn.textContent = 'Save Prize', 900);
+      };
+
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'secondary-btn';
+      clearBtn.style.flex = '1';
+      clearBtn.textContent = 'Clear';
+      clearBtn.onclick = () => {
+        if (!confirm('Clear this prize text?')) return;
+        savePrize('');
+        textarea.value = '';
+      };
+
+      actions.appendChild(saveBtn);
+      actions.appendChild(clearBtn);
+      card.appendChild(actions);
+
+      container.insertAdjacentElement('afterbegin', card);
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function showWinnerModal(winner, prizeText) {
+      const prev = document.querySelector('.winner-modal');
+      if (prev) prev.remove();
+
+      const modal = document.createElement('div');
+      modal.className = 'winner-modal';
+
+      const card = document.createElement('div');
+      card.className = 'winner-modal-card';
+
+      const title = document.createElement('h2');
+      title.textContent = `Winner: ${winner ? winner.name : '—'}`;
+      card.appendChild(title);
+
+      const percentP = document.createElement('p');
+      percentP.style.fontWeight = '800';
+      percentP.textContent = winner ? `${(winner.percent||0).toFixed(1)}% of their target achieved` : '';
+      card.appendChild(percentP);
+
+      const prizeWrap = document.createElement('p');
+      prizeWrap.className = 'modal-prize';
+      prizeWrap.innerHTML = prizeText ? escapeHtml(prizeText) : '<em>No prize set</em>';
+      card.appendChild(prizeWrap);
+
+      const btnRow = document.createElement('div');
+      btnRow.style.display = 'flex';
+      btnRow.style.gap = '8px';
+      btnRow.style.justifyContent = 'center';
+      btnRow.style.marginTop = '12px';
+
+      const ok = document.createElement('button');
+      ok.className = 'main-btn'; ok.textContent = 'OK';
+      ok.onclick = () => modal.remove();
+
+      const edit = document.createElement('button');
+      edit.className = 'secondary-btn'; edit.textContent = 'Edit Prize';
+      edit.onclick = () => { modal.remove(); showPage('race'); setTimeout(()=> { const ta = document.getElementById('prize-text'); if (ta) ta.focus(); }, 220); };
+
+      btnRow.appendChild(ok); btnRow.appendChild(edit);
+      card.appendChild(btnRow);
+      modal.appendChild(card);
+      document.body.appendChild(modal);
+    }
+
+    // ---------- Winner declaration ----------
+    function declareRaceWinner() {
+      const { winner, streakHolder, singleHolder } = computeRaceResults();
+      awardTrophies({ winner, streakHolder, singleHolder });
+      renderRaceTab();
+      const prize = getPrize();
+      if (winner && winner.percent > 0) {
+        try { confetti({ particleCount: 160, spread: 70, origin: { y: 0.35 } }); } catch (e) {}
+        showWinnerModal(winner, prize);
+      } else {
+        showWinnerModal(null, prize);
+      }
+    }
+
+    // ---------- Render (main) ----------
+    function render() {
+      if (!currentId && users.length) currentId = users[0].id;
+      const u = users.find(x => x.id === currentId);
+
+      // tabs
+      const tabsEl = document.getElementById('user-tabs');
+      if (tabsEl) {
+        tabsEl.innerHTML = users.map(usr => {
+          const isActive = usr.id === currentId ? 'active' : '';
+          const bg = usr.color || '#0984e3';
+          return `<button class="user-btn ${isActive}" style="background:${bg}" onclick="switchUser(${usr.id})">${usr.name}</button>`;
+        }).join('') + `<button class="add-btn" onclick="addNewUser()">+</button>`;
+      }
+
+      ['h','w','t'].forEach(p => {
+        const metric = document.getElementById(p+'-metric');
+        const imp = document.getElementById(p+'-imp');
+        if (metric && imp) {
+          metric.classList.toggle('hidden', unit !== 'kg');
+          imp.classList.toggle('hidden', unit === 'kg');
+        }
+      });
+
+      const bmiEl = document.getElementById('val-bmi');
+      const leftEl = document.getElementById('val-left');
+      const weeklyEl = document.getElementById('val-weekly');
+      if (bmiEl) bmiEl.innerText = "--";
+      if (leftEl) leftEl.innerText = "Set Target";
+      if (weeklyEl) weeklyEl.innerText = "--";
+
+      if (u) {
+        if (u.logs.length > 0) {
+          const curKg = u.logs[u.logs.length - 1].kg || 0;
+          if (bmiEl) bmiEl.innerText = (u.h > 0) ? (curKg / ((u.h/100)**2)).toFixed(1) : "--";
+
+          if (u.target && u.target > 0) {
+            const diff = curKg - u.target;
+            if (leftEl) leftEl.innerText = diff > 0 ? formatW(diff) : "GOAL HIT! 🍹";
+
+            if (u.tDate && diff > 0) {
+              const weeks = (new Date(u.tDate) - new Date()) / (1000*60*60*24*7);
+              if (weeklyEl) weeklyEl.innerText = weeks > 0 ? formatW(diff / weeks) : "Past Holiday Date";
+            } else {
+              if (weeklyEl) weeklyEl.innerText = "--";
+            }
+          } else {
+            if (leftEl) leftEl.innerText = "Set Target";
+            if (weeklyEl) weeklyEl.innerText = "--";
+          }
+        } else {
+          if (bmiEl) bmiEl.innerText = "--";
+          if (leftEl) leftEl.innerText = u.target && u.target > 0 ? "No weight logged" : "Set Target";
+          if (weeklyEl) weeklyEl.innerText = "--";
+        }
+      }
+
+      // Group total
+      let totalLost = 0;
+      users.forEach(usr => { if (usr.logs && usr.logs.length > 1) totalLost += (usr.logs[0].kg - usr.logs[usr.logs.length - 1].kg); });
+      const groupTotal = document.getElementById('group-total-val'); if (groupTotal) groupTotal.innerText = formatW(totalLost);
+
+      // Race tab UI
+      try { renderRaceTab(); } catch (e) { console.error(e); }
+      try { renderPrizeEditor(); } catch (e) {}
+      startCountdown();
+    }
+
+    // ---------- Utilities ----------
+    function formatW(kg) {
+      if (!isFinite(kg)) kg = 0;
+      if (unit === 'kg') return kg.toFixed(1) + 'kg';
+      const lbs = kgToLbs(kg);
+      return Math.floor(lbs / 14) + 'st ' + (lbs % 14).toFixed(1) + 'lb';
+    }
+
+    function changeUnit(u) { unit = u; saveAll(); render(); }
+
+    function addNewUser() {
+      const n = { id: Date.now(), name: "Racer", color: "#0984e3", logs: [], h: 0, target: 0, tDate: "", trophies: [] };
+      users.push(n); saveAll(); switchUser(n.id);
+    }
+
+    function deleteCurrentUser() {
+      if (!currentId) return;
+      if (!confirm("Erase all data for this person?")) return;
+      const idx = users.findIndex(x => x.id === currentId);
+      if (idx === -1) return;
+      users.splice(idx, 1);
+      currentId = users.length ? users[0].id : null;
+      saveAll();
+      render();
+    }
+
+    function showPage(p) {
+      document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('hidden', pg.id !== 'page-'+p));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById('btn-'+p); if (btn) btn.classList.add('active');
+    }
+
+    // ---------- Initial load ----------
+    render();
+    if (currentId) switchUser(currentId);
+  </script>
+</body>
+</html>
