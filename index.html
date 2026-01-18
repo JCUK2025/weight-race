@@ -1,348 +1,54 @@
-// Storage Key V14 for fresh logic
-let users = JSON.parse(localStorage.getItem('holiday_v14')) || [
-  { id: 1, name: "Lisa", color: "#e84393", logs: [], h: 0, target: 0, tDate: "" },
-  { id: 2, name: "John", color: "#2d3436", logs: [], h: 0, target: 0, tDate: "" }
-];
-let currentId = users.length ? users[0].id : null;
-let unit = localStorage.getItem('race_unit') || 'kg';
+<div class="user-nav" id="user-tabs"></div>
 
-function saveAll() {
-  localStorage.setItem('holiday_v14', JSON.stringify(users));
-  localStorage.setItem('race_unit', unit);
-}
+<div id="page-data" class="page">
+  <div class="card">
+    <div class="stat-grid">
+      <div class="stat-box"><span class="stat-label">Current BMI</span><div class="stat-val" id="val-bmi">--</div></div>
+      <div class="stat-box"><span class="stat-label">Left to Lose</span><div class="stat-val" id="val-left">Set Target</div></div>
+      <div class="stat-box weekly-target" style="grid-column:span 2"><span class="stat-label">Weekly Goal to hit Target</span><div class="stat-val" id="val-weekly">--</div></div>
+    </div>
 
-// TAB SWITCHER: Forcefully reloads data into inputs
-function switchUser(id) {
-  // Find user; guard if not found
-  const candidate = users.find(x => x.id === id);
-  if (!candidate) {
-    // fallback: choose first user if available
-    if (users.length) {
-      currentId = users[0].id;
-    } else {
-      currentId = null;
-    }
-    render(); // clear UI
-    startCountdown();
-    return;
-  }
-  currentId = candidate.id;
-  const u = candidate;
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="main-btn" id="unit-kg" onclick="changeUnit('kg')" style="flex:1;background:#fff;color:#333;border:1px solid #ddd">KG</button>
+      <button class="main-btn" id="unit-st" onclick="changeUnit('st')" style="flex:1;background:#fff;color:#333;border:1px solid #ddd">ST/LB</button>
+    </div>
 
-  // Sync UI Inputs
-  const inName = document.getElementById('in_name');
-  const inColor = document.getElementById('in_color');
-  if (inName) inName.value = u.name || "";
-  if (inColor) inColor.value = u.color || "#6c5ce7";
-  document.documentElement.style.setProperty('--active-color', u.color || "#6c5ce7");
+    <label style="font-size:12px;font-weight:800">NAME & THEME</label>
+    <input id="in_name" placeholder="User name">
+    <input id="in_color" type="color" style="height:44px;padding:6px;margin-top:8px">
 
-  // Load Height
-  if (unit === 'kg') {
-    const hCm = document.getElementById('h_cm');
-    if (hCm) hCm.value = u.h ? u.h : "";
-    const hFt = document.getElementById('h_ft');
-    const hIn = document.getElementById('h_in');
-    if (hFt) hFt.value = "";
-    if (hIn) hIn.value = "";
-  } else {
-    if (u.h && u.h > 0) {
-      const ft = Math.floor(u.h / 30.48);
-      const inch = Math.round((u.h - (ft * 30.48)) / 2.54);
-      const hFt = document.getElementById('h_ft');
-      const hIn = document.getElementById('h_in');
-      if (hFt) hFt.value = ft;
-      if (hIn) hIn.value = inch;
-    } else {
-      const hFt = document.getElementById('h_ft');
-      const hIn = document.getElementById('h_in');
-      if (hFt) hFt.value = "";
-      if (hIn) hIn.value = "";
-    }
-    const hCm = document.getElementById('h_cm');
-    if (hCm) hCm.value = "";
-  }
+    <label style="font-size:12px;font-weight:800">HEIGHT</label>
+    <div id="h-metric"><input id="h_cm" type="number" placeholder="Height (cm)"></div>
+    <div id="h-imp" class="hidden" style="display:flex;gap:8px"><input id="h_ft" type="number" placeholder="ft"><input id="h_in" type="number" placeholder="in"></div>
 
-  // Load Target
-  if (u.target && u.target > 0) {
-    if (unit === 'kg') {
-      const tKg = document.getElementById('t_kg');
-      if (tKg) tKg.value = Number(u.target).toFixed(1);
-      const tSt = document.getElementById('t_st');
-      const tLb = document.getElementById('t_lb');
-      if (tSt) tSt.value = "";
-      if (tLb) tLb.value = "";
-    } else {
-      const lbs = u.target * 2.20462;
-      const tSt = document.getElementById('t_st');
-      const tLb = document.getElementById('t_lb');
-      if (tSt) tSt.value = Math.floor(lbs / 14);
-      if (tLb) tLb.value = +(lbs % 14).toFixed(1);
-      const tKg = document.getElementById('t_kg');
-      if (tKg) tKg.value = "";
-    }
-  } else {
-    const tKg = document.getElementById('t_kg');
-    const tSt = document.getElementById('t_st');
-    const tLb = document.getElementById('t_lb');
-    if (tKg) tKg.value = "";
-    if (tSt) tSt.value = "";
-    if (tLb) tLb.value = "";
-  }
+    <button class="main-btn" onclick="updateUserProfile()">Save Profile Settings</button>
+  </div>
 
-  const tDate = document.getElementById('t_date');
-  if (tDate) tDate.value = u.tDate || "";
+  <div class="card">
+    <h3>⚖️ Log Current Weight</h3>
+    <div id="w-metric"><input id="w_kg" type="number" step="0.1" placeholder="Current weight (kg)"></div>
+    <div id="w-imp" class="hidden" style="display:flex;gap:8px"><input id="w_st" type="number" placeholder="st"><input id="w_lb" type="number" placeholder="lb"></div>
+    <button class="main-btn" onclick="addWeightEntry()">Submit Weight</button>
+  </div>
 
-  // Clear any weight input leftover
-  const wKg = document.getElementById('w_kg');
-  const wSt = document.getElementById('w_st');
-  const wLb = document.getElementById('w_lb');
-  if (wKg) wKg.value = "";
-  if (wSt) wSt.value = "";
-  if (wLb) wLb.value = "";
+  <div class="card">
+    <h3>🎯 Set Holiday Target</h3>
+    <div id="t-metric"><input id="t_kg" type="number" step="0.1" placeholder="Target weight (kg)"></div>
+    <div id="t-imp" class="hidden" style="display:flex;gap:8px"><input id="t_st" type="number" placeholder="st"><input id="t_lb" type="number" placeholder="lb"></div>
+    <input id="t_date" type="date" style="margin-top:8px">
+    <button class="main-btn" onclick="updateUserGoal()">Save Goal</button>
+  </div>
 
-  render();
-  startCountdown();
-}
+  <button class="secondary-btn" onclick="deleteCurrentUser()">RESET ALL MY DATA</button>
+</div>
 
-function updateUserProfile() {
-  const u = users.find(x => x.id === currentId);
-  if (!u) return;
-  const inName = document.getElementById('in_name');
-  const inColor = document.getElementById('in_color');
-  if (inName) u.name = inName.value || u.name;
-  if (inColor) u.color = inColor.value || u.color;
+<div id="page-race" class="page hidden">
+  <div class="card" style="text-align:center;border:2px solid var(--accent)">
+    <div style="font-size:11px;font-weight:800;color:#666">GROUP TOTAL LOST</div>
+    <div style="font-size:26px;font-weight:900;color:var(--accent)" id="group-total-val">0.0kg</div>
+  </div>
 
-  if (unit === 'kg') {
-    const parsed = parseFloat(document.getElementById('h_cm').value);
-    u.h = isFinite(parsed) ? parsed : (u.h || 0);
-  } else {
-    const ft = parseFloat(document.getElementById('h_ft').value) || 0;
-    const inch = parseFloat(document.getElementById('h_in').value) || 0;
-    const calc = (ft * 30.48) + (inch * 2.54);
-    u.h = isFinite(calc) ? calc : (u.h || 0);
-  }
-  saveAll();
-  render();
-}
+  <div id="race-container"></div>
+</div>
 
-function updateUserGoal() {
-  const u = users.find(x => x.id === currentId);
-  if (!u) return;
-  if (unit === 'kg') {
-    const parsed = parseFloat(document.getElementById('t_kg').value);
-    u.target = isFinite(parsed) ? parsed : 0;
-  } else {
-    const st = parseFloat(document.getElementById('t_st').value) || 0;
-    const lb = parseFloat(document.getElementById('t_lb').value) || 0;
-    const lbs = (st * 14) + lb;
-    const kg = isFinite(lbs) ? (lbs / 2.20462) : 0;
-    u.target = kg || 0;
-  }
-  const tDate = document.getElementById('t_date');
-  u.tDate = (tDate && tDate.value) ? tDate.value : "";
-  saveAll();
-  render();
-}
-
-function addWeightEntry() {
-  const u = users.find(x => x.id === currentId);
-  if (!u) return;
-  let kg = NaN;
-  if (unit === 'kg') {
-    kg = parseFloat(document.getElementById('w_kg').value);
-  } else {
-    const st = parseFloat(document.getElementById('w_st').value) || 0;
-    const lb = parseFloat(document.getElementById('w_lb').value) || 0;
-    const lbs = (st * 14) + lb;
-    kg = lbs / 2.20462;
-  }
-  if (!isFinite(kg) || kg <= 0) return;
-  // push a snapshot
-  u.logs.push({ kg: +kg.toFixed(1), d: new Date().toLocaleDateString('en-GB') });
-  saveAll();
-  render();
-  // clear inputs
-  document.getElementById('w_kg').value = "";
-  document.getElementById('w_st').value = "";
-  document.getElementById('w_lb').value = "";
-}
-
-function getProg(u) {
-  if (!u || !u.logs || u.logs.length === 0 || !u.target || u.target === 0) return 0;
-  const startWeight = u.logs[0].kg;
-  const currentWeight = u.logs[u.logs.length - 1].kg;
-  const totalToLose = startWeight - u.target;
-  if (totalToLose <= 0) return currentWeight <= u.target ? 100 : 0;
-  let p = ((startWeight - currentWeight) / totalToLose) * 100;
-  return Math.min(100, Math.max(0, p));
-}
-
-// Simple helper to format weight
-function formatW(kg) {
-  if (!isFinite(kg)) kg = 0;
-  if (unit === 'kg') return kg.toFixed(1) + 'kg';
-  const lbs = kg * 2.20462;
-  return Math.floor(lbs / 14) + 'st ' + (lbs % 14).toFixed(1) + 'lb';
-}
-
-// countdown helpers (ensure these exist in your page)
-let countdownInterval = null;
-const daysEl = document.getElementById('days');
-const hoursEl = document.getElementById('hours');
-const minsEl = document.getElementById('mins');
-const secsEl = document.getElementById('secs');
-const countdownLabelEl = document.querySelector('#countdown-timer span');
-
-function stopCountdown() {
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
-}
-function setCountdownEmpty(message) {
-  if (daysEl) daysEl.innerText = '--';
-  if (hoursEl) hoursEl.innerText = '--';
-  if (minsEl) minsEl.innerText = '--';
-  if (secsEl) secsEl.innerText = '--';
-  if (countdownLabelEl) countdownLabelEl.innerText = message || 'TIME UNTIL FLIGHT ✈️';
-}
-function startCountdown() {
-  stopCountdown();
-  if (!currentId) { setCountdownEmpty('No user selected'); return; }
-  const u = users.find(x => x.id === currentId);
-  if (!u || !u.tDate) { setCountdownEmpty('Set holiday date'); return; }
-
-  const target = new Date(u.tDate + 'T23:59:59');
-  if (!isFinite(target.getTime())) { setCountdownEmpty('Invalid date'); return; }
-
-  function update() {
-    const now = new Date();
-    let diff = target - now;
-
-    if (diff <= 0) {
-      if (daysEl) daysEl.innerText = '00';
-      if (hoursEl) hoursEl.innerText = '00';
-      if (minsEl) minsEl.innerText = '00';
-      if (secsEl) secsEl.innerText = '00';
-      if (countdownLabelEl) countdownLabelEl.innerText = 'HOLIDAY PASSED';
-      // If you implemented declareRaceWinner, call it here
-      if (typeof declareRaceWinner === 'function') {
-        try { declareRaceWinner(); } catch (e) { console.error(e); }
-      }
-      stopCountdown();
-      return;
-    }
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    diff -= days * (1000 * 60 * 60 * 24);
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    diff -= hours * (1000 * 60 * 60);
-    const minutes = Math.floor(diff / (1000 * 60));
-    diff -= minutes * (1000 * 60);
-    const seconds = Math.floor(diff / 1000);
-
-    if (daysEl) daysEl.innerText = String(days).padStart(2, '0');
-    if (hoursEl) hoursEl.innerText = String(hours).padStart(2, '0');
-    if (minsEl) minsEl.innerText = String(minutes).padStart(2, '0');
-    if (secsEl) secsEl.innerText = String(seconds).padStart(2, '0');
-    if (countdownLabelEl) countdownLabelEl.innerText = 'TIME UNTIL FLIGHT ✈️';
-  }
-
-  update();
-  countdownInterval = setInterval(update, 1000);
-}
-
-function changeUnit(u) { unit = u; saveAll(); switchUser(currentId); }
-
-function addNewUser() {
-  const n = { id: Date.now(), name: "Racer", color: "#0984e3", logs: [], h: 0, target: 0, tDate: "" };
-  users.push(n);
-  saveAll();
-  switchUser(n.id);
-}
-
-function deleteCurrentUser() {
-  if (!currentId) return;
-  if (!confirm("Erase all data for this person?")) return;
-  const idx = users.findIndex(x => x.id === currentId);
-  if (idx === -1) return;
-  users.splice(idx, 1);
-  // choose a new current user if any remain
-  currentId = users.length ? users[0].id : null;
-  saveAll();
-  render();
-  startCountdown();
-}
-
-function showPage(p) {
-  document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('hidden', pg.id !== 'page-' + p));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('btn-' + p);
-  if (btn) btn.classList.add('active');
-}
-
-// Render the UI
-function render() {
-  // guard current user
-  if (!currentId && users.length) currentId = users[0].id;
-  const u = users.find(x => x.id === currentId);
-
-  // Render Tabs
-  const tabsEl = document.getElementById('user-tabs');
-  if (tabsEl) {
-    tabsEl.innerHTML = users.map(usr => {
-      const isActive = usr.id === currentId ? 'active' : '';
-      const bg = usr.color || '#0984e3';
-      return `<button class="user-btn ${isActive}" style="background:${bg}" onclick="switchUser(${usr.id})">${usr.name}</button>`;
-    }).join('') + `<button class="add-btn" onclick="addNewUser()">+</button>`;
-  }
-
-  // Toggle Units
-  ['h', 'w', 't'].forEach(p => {
-    const metric = document.getElementById(p + '-metric');
-    const imp = document.getElementById(p + '-imp');
-    if (metric && imp) {
-      metric.classList.toggle('hidden', unit !== 'kg');
-      imp.classList.toggle('hidden', unit === 'kg');
-    }
-  });
-
-  // Reset stats to defaults to avoid leftover data
-  const bmiEl = document.getElementById('val-bmi');
-  const leftEl = document.getElementById('val-left');
-  const weeklyEl = document.getElementById('val-weekly');
-  if (bmiEl) bmiEl.innerText = "--";
-  if (leftEl) leftEl.innerText = "Set Target";
-  if (weeklyEl) weeklyEl.innerText = "--";
-
-  // Update stats for current user if possible
-  if (u) {
-    if (u.logs.length > 0) {
-      const curKg = u.logs[u.logs.length - 1].kg || 0;
-      if (bmiEl) bmiEl.innerText = (u.h > 0) ? (curKg / ((u.h / 100) ** 2)).toFixed(1) : "--";
-
-      if (u.target && u.target > 0) {
-        const diff = curKg - u.target;
-        if (leftEl) leftEl.innerText = diff > 0 ? formatW(diff) : "GOAL HIT! 🍹";
-
-        if (u.tDate && diff > 0) {
-          const weeks = (new Date(u.tDate) - new Date()) / (1000 * 60 * 60 * 24 * 7);
-          if (weeklyEl) weeklyEl.innerText = weeks > 0 ? formatW(diff / weeks) : "Past Holiday Date";
-        } else {
-          if (weeklyEl) weeklyEl.innerText = "--";
-        }
-      } else {
-        if (leftEl) leftEl.innerText = "Set Target";
-        if (weeklyEl) weeklyEl.innerText = "--";
-      }
-    } else {
-      if (bmiEl) bmiEl.innerText = "--";
-      if (leftEl) leftEl.innerText = u.target && u.target > 0 ? "No weight logged" : "Set Target";
-      if (weeklyEl) weeklyEl.innerText = "--";
-    }
-  }
-
-  // Group Total
-  let totalLost = 0;
-  users.forEach(***
-
+<div style="height:84px"></div>
